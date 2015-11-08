@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Rotate Slider</title>
+	<style>
+		.rotate-slider {
+			border: 1px solid #f00;
+			padding: 10px;
+			font-size: 0;
+		}
+
+		.rotate-slider__view {
+			border: 1px solid #00f;
+			padding: 10px;
+			font-size: 0;
+		}
+
+		.item {
+			font-size: 10;
+			display: inline-block;
+			margin: 0 5px;
+			border: 1px solid gray;
+			border-radius: 4px;
+			font-size: 20px;
+			width: 40px;
+			height: 40px;
+		}
+
+		.hidden{
+			opacity: .1;
+		}
+
+	</style>
+</head>
+<body>
+	
+<div class="rotate-slider" data-show="3">
+	<div class="rotate-slider__items">
+		<div class="item">0</div>
+		<div class="item">1</div>
+		<div class="item">2</div>
+		<div class="item" data-static>3</div>
+		<div class="item">4</div>
+		<div class="item">5</div>
+		<div class="item">6</div>
+		<div class="item">7</div>
+		<div class="item">8</div>
+	</div>
+</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script>
+	function Rotate() {
+		var self = this;
+		me = {
+			mask: [],
+			timer: null,
+			$slider: $(".rotate-slider")
+		};
+
+		this.init = function() {
+			me.$items = me.$slider.find(".item");
+			me.len = me.$slider.find(".item").length;
+			me.step = +me.$slider.data("show");
+			me.static = me.$slider.find("[data-static]");
+
+			// add wrap for custom slider
+			me.$slider.after("<div class='rotate-slider__view'>");
+			me.$sliderView = me.$slider.siblings(".rotate-slider__view");
+			me.visible = +me.$slider.data("show") + me.static.length;
+
+			this.createMask();
+
+			this.viewMask();
+			this.mapMask();
+		};
+
+		this.createMask = function() {
+			// start rotate with 0 index
+			var start = 0;
+			// how items need display
+			var show = +me.$slider.data("show");
+
+			for(var i = 0; i < me.$items.length; i++ ) {
+				var obj = {
+					'index': i,
+					'position': i,
+					'visible': null,
+					'static': null,
+					'enumerable': true
+				};
+
+				if(me.$items[i].hasAttribute("data-static")) {
+					obj.static = true;
+				} else {
+					if(i >= start && i < show) {
+						obj.visible = true;
+					} else {
+						obj.visible = false;
+					}
+				}
+
+				me.mask.push(obj);
+			}
+		};
+
+		this.rotate = function() {
+
+			var index;
+			var offset;
+			if(me.visible * 2 <= me.mask.length) {
+
+				for(var i = me.mask.length - 1; i >= 0; i-- ) {
+					if(me.mask[i].visible && me.mask[i].enumerable && !me.mask[i].static) {
+						index = (i - me.step >= 0) ? i - me.step : i - me.step + me.len;
+
+						offset = _getOffset(i, index);
+
+						var elem = (index - offset < 0) ? index - offset + me.len : index - offset;
+
+						me.mask[i].visible = false;
+						me.mask[elem].visible = true;
+						me.mask[elem].enumerable = false;
+						me.mask[elem].position = me.mask[i].position;
+					}
+
+				}
+			}
+
+			this.viewMask();
+			this.mapMask();
+		};
+
+		this.viewMask = function() {
+			var clone = me.$items.clone();
+			me.$sliderView.empty();
+			_sortItems();
+
+			for(var i = 0; i < me.cloneMask.length; i++) {
+				if(me.cloneMask[i].visible || me.cloneMask[i].static) {
+					me.$sliderView.append(clone[me.cloneMask[i].index]);
+				}
+			}
+
+			if(!me.timer) {
+				me.timer = setInterval(
+					function() {self.rotate()}, 3000
+				);
+			}
+		};
+
+		this.mapMask = function() {
+			for(var i = 0; i < me.mask.length; i++) {
+				me.mask[i].enumerable = true;
+				if(!me.mask[i].static) {
+					if(me.mask[i].visible) {
+						me.$items.eq(i).removeClass('hidden');
+					} else {
+						me.$items.eq(i).addClass('hidden');
+					}
+				} else {
+					me.$items.eq(i).css("border", "3px solid red");
+				}
+			}
+
+			if(!me.timer) {
+				me.timer = setInterval(
+					function() {self.rotate()}, 1000
+				);
+			}
+		};
+
+		// Private methods
+		function _getOffset(startIndex, endIndex) {
+			var offset = 0;
+
+			if(startIndex > endIndex) {
+				for(var i = startIndex; i >= endIndex; i--) {
+					if(me.mask[i].static) {
+						offset++;
+					}
+				}
+			} else {
+				for(var i = startIndex; i >= 0; i--) {
+					if(me.mask[i].static) {
+						offset++;
+					}
+				}
+
+				for(var i = me.len - 1; i >= endIndex; i--) {
+					if(me.mask[i].static) {
+						offset++;
+					}
+				}
+			}
+
+			if(me.mask[endIndex].static) {
+				var testendIndex = (endIndex - 1) < 0 ? me.mask.length - 1 : endIndex - 1;
+				while(me.mask[testendIndex].static) {
+					offset++;
+					testendIndex--;
+				}
+			}
+
+			return offset;
+		};
+
+		function _sortItems() {
+			me.cloneMask = [];
+
+			for(var i = 0; i < me.mask.length; i++) {
+				me.mask[i].enumerable = true;
+
+				if(me.mask[i].visible || me.mask[i].static) {
+					me.cloneMask[me.mask[i].position] = me.mask[i];
+				}
+			}
+		};
+
+		this.init();
+
+		return self;
+
+	};
+
+	var rotate_slider = new Rotate();
+
+</script>
+</body>
+</html>
