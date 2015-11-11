@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Rotate Slider</title>
-	<style>
+	<style type="text/css">
 		.rotate-slider {
 			border: 1px solid #f00;
 			padding: 10px;
@@ -28,203 +28,223 @@
 		}
 
 		.hidden{
-			opacity: .1;
+			opacity: .3;
+		}
+
+		.static {
+			border: 3px solid red;
 		}
 
 	</style>
 </head>
 <body>
 	
-<div class="rotate-slider" data-show="3">
-	<div class="rotate-slider__items">
-		<div class="item">0</div>
-		<div class="item">1</div>
-		<div class="item">2</div>
-		<div class="item" data-static>3</div>
-		<div class="item">4</div>
-		<div class="item">5</div>
-		<div class="item">6</div>
-		<div class="item">7</div>
-		<div class="item">8</div>
-	</div>
+<div class="rotate-slider" data-rotate-items="3">
+	<div class="item">0</div>
+	<div class="item">1</div>
+	<div class="item">2</div>
+	<div class="item"  data-static>3</div>
+	<div class="item">4</div>
+	<div class="item">5</div>
+	<div class="item">6</div>
+	<div class="item">7</div>
+	<div class="item">8</div>
+	<div class="item">9</div>
+	<div class="item">10</div>
+	<div class="item">11</div>
 </div>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
-<script>
-	function Rotate() {
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script type="text/javascript">
+
+	function Rotate(opts) {
 		var self = this;
-		me = {
-			mask: [],
-			timer: null,
-			$slider: $(".rotate-slider")
-		};
 
-		this.init = function() {
-			me.$items = me.$slider.find(".item");
-			me.len = me.$slider.find(".item").length;
-			me.step = +me.$slider.data("show");
-			me.static = me.$slider.find("[data-static]");
+		self.$rotate = opts.element;
+		this.speed = opts.speed;
+		this.timer = false;
+		this.$rotateItems = self.$rotate.children(".item");
+		this.itemsLength = self.$rotateItems.length;
+		this.itemsStatic = self.$rotate.find('[data-static]');
+		this.step = +self.$rotate.data("rotate-items");
+		this.start = 0;
+		this.mask = [];
+		this.tempMask = [];
+		this.$rotate.after("<div class='rotate-slider__view'>");
+		this.$rotateView = this.$rotate.next(".rotate-slider__view");
 
-			// add wrap for custom slider
-			me.$slider.after("<div class='rotate-slider__view'>");
-			me.$sliderView = me.$slider.siblings(".rotate-slider__view");
-			me.visible = +me.$slider.data("show") + me.static.length;
+		if(this.step + this.itemsStatic.length >= this.itemsLength) return;
 
-			this.createMask();
+		this.startRotate();
+	};
 
-			this.viewMask();
-			this.mapMask();
-		};
+	Rotate.prototype.startRotate = function() {
 
-		this.createMask = function() {
-			// start rotate with 0 index
-			var start = 0;
-			// how items need display
-			var show = +me.$slider.data("show");
+		var self = this;
 
-			for(var i = 0; i < me.$items.length; i++ ) {
-				var obj = {
-					'index': i,
-					'position': i,
-					'visible': null,
-					'static': null,
-					'enumerable': true
-				};
+		$.each(self.$rotateItems, function(index, item) {
+			var $item = $(item);
+			var obj = {
+				'index' : index,
+				'position': index,
+				'visible': null,
+				'static': null,
+				'step': self.step
+			};
 
-				if(me.$items[i].hasAttribute("data-static")) {
-					obj.static = true;
-				} else {
-					if(i >= start && i < show) {
-						obj.visible = true;
-					} else {
-						obj.visible = false;
-					}
-				}
-
-				me.mask.push(obj);
-			}
-		};
-
-		this.rotate = function() {
-
-			var index;
-			var offset;
-			if(me.visible * 2 <= me.mask.length) {
-
-				for(var i = me.mask.length - 1; i >= 0; i-- ) {
-					if(me.mask[i].visible && me.mask[i].enumerable && !me.mask[i].static) {
-						index = (i - me.step >= 0) ? i - me.step : i - me.step + me.len;
-
-						offset = _getOffset(i, index);
-
-						var elem = (index - offset < 0) ? index - offset + me.len : index - offset;
-
-						me.mask[i].visible = false;
-						me.mask[elem].visible = true;
-						me.mask[elem].enumerable = false;
-						me.mask[elem].position = me.mask[i].position;
-					}
-
-				}
+			if(item.hasAttribute("data-static")) {
+				obj.static = true;
+				obj.state = index;
+			} else if(index >= self.start && index < self.step){ // #1 error because this interval can has static element, it's need check end encrease step
+				obj.visible = true;
 			}
 
-			this.viewMask();
-			this.mapMask();
-		};
+			self.mask.push(obj);
+		});
 
-		this.viewMask = function() {
-			var clone = me.$items.clone();
-			me.$sliderView.empty();
-			_sortItems();
+		self.$rotate.hide();
 
-			for(var i = 0; i < me.cloneMask.length; i++) {
-				if(me.cloneMask[i].visible || me.cloneMask[i].static) {
-					me.$sliderView.append(clone[me.cloneMask[i].index]);
-				}
+		this.updateMask();
+	};
+
+	Rotate.prototype.updateMask = function() {
+		var self = this;
+		var count = 0;
+		// this.debug();
+
+		for(var i = self.mask.length - 1; i >= 0; i-- ) {
+			if(!self.mask[i].visible ) continue;
+				self.tempMask.push(self.mask[i]);
+				self.mask[i].visible = null;
+		}
+
+		this._refineStep();
+
+		for(var i = 0; i < self.tempMask.length; i++) {
+			var index = (self.tempMask[i].position - self.tempMask[i].step >= 0) ?
+						self.tempMask[i].position - self.tempMask[i].step :
+						self.tempMask[i].position - self.tempMask[i].step + self.itemsLength
+			;
+
+			self.mask[index].visible = true;
+			if(!self.mask[index].static) {
+				self.mask[index].state = count;
+				count++;
 			}
+		}
+		//this.debugTemp();
+		// this.debug();
+		//this.mapMask();
+		this.showItems();
 
-			if(!me.timer) {
-				me.timer = setInterval(
-					function() {self.rotate()}, 3000
-				);
-			}
-		};
+		self.tempMask = [];
+	}
 
-		this.mapMask = function() {
-			for(var i = 0; i < me.mask.length; i++) {
-				me.mask[i].enumerable = true;
-				if(!me.mask[i].static) {
-					if(me.mask[i].visible) {
-						me.$items.eq(i).removeClass('hidden');
-					} else {
-						me.$items.eq(i).addClass('hidden');
-					}
-				} else {
-					me.$items.eq(i).css("border", "3px solid red");
-				}
-			}
+	Rotate.prototype._refineStep = function() {
+		//# bug 2, add check throught while if last checked el was static
+		var self = this;
+		for(var i = 0; i < self.tempMask.length; i++ ) {
+			
+			var offset = self.step + 0;
 
-			if(!me.timer) {
-				me.timer = setInterval(
-					function() {self.rotate()}, 1000
-				);
-			}
-		};
+			if(self.tempMask[i].index - self.step >= 0) {
+				checkTo = self.tempMask[i].index - self.step;
 
-		// Private methods
-		function _getOffset(startIndex, endIndex) {
-			var offset = 0;
-
-			if(startIndex > endIndex) {
-				for(var i = startIndex; i >= endIndex; i--) {
-					if(me.mask[i].static) {
-						offset++;
+				for(var j = self.tempMask[i].index; j >= checkTo; j--) {
+					if(self.mask[j].static) {
+						offset += 1;
+						self.tempMask[i].step = offset;
 					}
 				}
 			} else {
-				for(var i = startIndex; i >= 0; i--) {
-					if(me.mask[i].static) {
-						offset++;
+				checkTo = self.tempMask[i].index - self.step + this.itemsLength;
+
+				for(var j = self.tempMask[i].index; j >= 0; j--) {
+					if(self.mask[j].static) {
+						offset += 1;
+						self.tempMask[i].step = offset;
 					}
 				}
 
-				for(var i = me.len - 1; i >= endIndex; i--) {
-					if(me.mask[i].static) {
-						offset++;
+				for(var j = this.itemsLength - 1; j >= checkTo; j--) {
+					if(self.mask[j].static) {
+						offset += 1;
+						self.tempMask[i].step = offset;
 					}
 				}
-			}
 
-			if(me.mask[endIndex].static) {
-				var testendIndex = (endIndex - 1) < 0 ? me.mask.length - 1 : endIndex - 1;
-				while(me.mask[testendIndex].static) {
-					offset++;
-					testendIndex--;
+			}
+		}
+	}
+
+	// Good for visual text
+	Rotate.prototype.mapMask = function() {
+		var self = this;
+
+		for(var i = 0; i < this.mask.length; i++) {
+			if(this.mask[i].static) continue;
+
+			if(this.mask[i].visible) {
+				this.$rotateItems.eq(i).removeClass("hidden");
+			} else {
+				this.$rotateItems.eq(i).addClass("hidden");
+			}
+		}
+	}
+
+	Rotate.prototype.showItems = function() {
+		var self = this;
+		var sortArray = [];
+
+		if(this.$rotateView.children().length) {
+			this.$rotateView.empty();
+		}
+
+		for(var i = self.mask.length - 1; i >= 0; i-- ) {
+			if(self.mask[i].visible || self.mask[i].static) {
+				sortArray.push(self.mask[i]);
+			}
+		}
+
+		for(var i = 0; i < sortArray.length; i++) {
+			for(var j = 0; j < sortArray.length; j++) {
+				var itemI = sortArray[i];
+				var itemJ = sortArray[j];
+
+				if(itemI.state < itemJ.state) {
+					sortArray[i] = itemJ;
+					sortArray[j] = itemI;
 				}
 			}
+		}
 
-			return offset;
-		};
+		for(var i = 0; i < sortArray.length; i++ ) {
+			this.$rotateView.append(self.$rotateItems.eq(sortArray[i].index).clone());
+		}
 
-		function _sortItems() {
-			me.cloneMask = [];
-
-			for(var i = 0; i < me.mask.length; i++) {
-				me.mask[i].enumerable = true;
-
-				if(me.mask[i].visible || me.mask[i].static) {
-					me.cloneMask[me.mask[i].position] = me.mask[i];
-				}
-			}
-		};
-
-		this.init();
-
-		return self;
-
+		if(!self.timer) {
+			self.timer = true;
+			setInterval(this.updateMask.bind(this), 300);
+		}
 	};
 
-	var rotate_slider = new Rotate();
+	Rotate.prototype.debug = function() {
+		for(var i = this.mask.length - 1; i >= 0; i-- ) {
+			console.log(this.mask[i].index + "-> visible :" + this.mask[i].visible);
+		}
+	}
+
+	Rotate.prototype.debugTemp = function() {
+		for(var i = this.tempMask.length - 1; i >= 0; i-- ) {
+			console.log(this.tempMask[i].index + "-> visible :" + this.tempMask[i].visible);
+		}
+	}
+
+	var rotate = new Rotate({
+		element: $(".rotate-slider"),
+		speed: 3000
+	});
+
 
 </script>
 </body>
