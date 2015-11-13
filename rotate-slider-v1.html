@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+
+<style>
+	.active {
+		background-color: #ccc;
+	}
+
+	#res div:hover {
+		background-color: #ccc;
+		cursor: pointer;
+	}
+</style>
+	
+
+	<input id="input" type="text" name="" id="">
+	<select name="" id="select">
+		<option value="europa">europa</option>
+		<option value="asia">asia</option>
+		<option value="ameriaca">ameriaca</option>
+	</select>
+
+	<div id="res"></div>
+
+	<script>
+		var data = [
+			{
+				"index": "1",
+				"name": "Verona",
+				"location": "Europa"
+			},
+			{
+				"index": "2",
+				"name": "Versa",
+				"location": "Europa"
+			},
+			{
+				"index": "3",
+				"name": "Valania",
+				"location": "Europa"
+			},
+			{
+				"index": "4",
+				"name": "Islamabad",
+				"location": "asia"
+			},
+			{
+				"index": "5",
+				"name": "ilamhuylo",
+				"location": "asia"
+			},
+			{
+				"index": "6",
+				"name": "ishakismam",
+				"location": "asia"
+			},
+			{
+				"index": "7",
+				"name": "Verona",
+				"location": "america"
+			}
+		];
+
+		var param = {
+			"name": null,
+			"location": null
+		};
+
+		var input = document.getElementById('input');
+		var select = document.getElementById('select');
+		var res = document.getElementById('res');
+
+		input.addEventListener("keyup", func1, false);
+		input.addEventListener("keydown", keydown1, false);
+		res.addEventListener("click", clickPlaceholder, false);
+		//input.addEventListener("blur", blur1, false);
+
+		function clickPlaceholder() {
+			input.value = event.target.textContent;
+			blur1();
+		}
+
+		function func1(e) {
+			console.log(e.keyCode);
+			var self = this;
+			var resultData = [];
+			param.name = this.value;
+			param.location = select.value;
+
+			if(e.keyCode === 40 || e.keyCode === 38) {
+				arrow(e.keyCode);
+				return;
+			}
+
+			if(e.keyCode === 13) {
+				enter();
+				return;
+			}
+
+			for(var i = 0; i < data.length; i++) {
+				if(!param.name.length) break;
+
+				if(data[i].name.slice(0, param.name.length).toUpperCase() === param.name.toUpperCase()
+					&& data[i].location.toUpperCase() === param.location.toUpperCase()) {
+
+					resultData.push(data[i].name);
+				}
+			}
+
+			if(resultData.length) {
+				res.innerHTML = '';
+
+				for(var i = 0; i < resultData.length; i++) {
+					var item = document.createElement("div");
+					item.textContent = resultData[i];
+					res.appendChild(item);
+				}
+			} else {
+				blur1();
+			}
+
+			console.log(resultData);
+
+		};
+
+		function blur1 () {
+			var res = document.getElementById('res');
+
+			if(res) {
+				res.innerHTML = '';
+			}
+		}
+
+		function keydown1(e) {
+			if(!this.value) {
+				blur1();
+			}
+		}
+
+		function arrow(code) {
+			var res = document.getElementById('res');
+			var active = res.querySelector(".active");
+			
+			if(active) {
+				
+				active.classList.remove("active");
+
+				if(code === 40) {
+					if(active.nextElementSibling) {
+						active.nextElementSibling.classList.add("active");
+					} else {
+						res.firstElementChild.classList.add("active");
+					}
+				} else {
+					if(active.nextElementSibling) {
+						active.nextElementSibling.classList.add("active");
+					} else {
+						res.firstElementChild.classList.add("active");
+					}
+				}
+			} else {
+				res.firstElementChild.classList.add("active");
+			}
+		}
+
+		enter = function() {
+			// отправка данных
+			var res = document.getElementById('res');
+
+			if(res) {
+				var active = res.querySelector(".active");
+				input.value = active.innerHTML;
+				res.innerHTML = '';
+			}
+		}
+
+	</script>
+</body>
+</html>
